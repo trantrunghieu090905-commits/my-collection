@@ -20,7 +20,7 @@ const products: StoreProduct[] = [
 export default function HomePage() {
   const [activeCategory, setActiveCategory] = useState("Tất cả");
   const [search, setSearch] = useState("");
-  const [saved, setSaved] = useState<number[]>([]);
+  const [saved, setSaved] = useState<string[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [productList, setProductList] = useState<StoreProduct[]>(products);
 
