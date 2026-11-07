@@ -1,11 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/lib/supabase";
 import { ArrowDown, ArrowRight, ArrowUpRight, Heart, Menu, Search, ShoppingBag, Sparkles, X } from "lucide-react";
 
 const categories = ["Tất cả", "Thời trang nữ", "Thời trang nam", "Phụ kiện", "Phong cách sống"];
 
-const products = [
+type StoreProduct = { id: string | number; name: string; category: string; price: string; tag: string; image: string; tone: string; affiliateUrl?: string | null };
+
+const products: StoreProduct[] = [
   { id: 1, name: "Áo sơ mi linen form rộng", category: "Thời trang nữ", price: "189.000₫", tag: "Được yêu thích", image: "https://images.unsplash.com/photo-1598554747436-c9293d6a588f?auto=format&fit=crop&w=900&q=85", tone: "Nắng nhẹ, thoáng mát và dễ phối." },
   { id: 2, name: "Túi đeo vai tối giản", category: "Phụ kiện", price: "245.000₫", tag: "Lựa chọn của biên tập", image: "https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=900&q=85", tone: "Một điểm nhấn tinh tế cho mọi outfit." },
   { id: 3, name: "Áo thun basic premium", category: "Thời trang nam", price: "129.000₫", tag: "Dễ ứng dụng", image: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=85", tone: "Đơn giản, linh hoạt, mặc được mỗi ngày." },
@@ -19,14 +22,32 @@ export default function HomePage() {
   const [search, setSearch] = useState("");
   const [saved, setSaved] = useState<number[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [productList, setProductList] = useState<StoreProduct[]>(products);
 
-  const visibleProducts = useMemo(() => products.filter((product) => {
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.from("products").select("id,name,category,price,image_url,description,affiliate_url,is_featured").eq("is_active", true).order("created_at", { ascending: false }).then(({ data, error }) => {
+      if (error || !data || data.length === 0) return;
+      setProductList(data.map((item) => ({
+        id: item.id,
+        name: item.name,
+        category: item.category,
+        price: Number(item.price).toLocaleString("vi-VN") + "₫",
+        tag: item.is_featured ? "Lựa chọn nổi bật" : "Được tuyển chọn",
+        image: item.image_url || "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=900&q=85",
+        tone: item.description || "Một lựa chọn đáng cân nhắc cho bộ sưu tập của bạn.",
+        affiliateUrl: item.affiliate_url
+      })));
+    });
+  }, []);
+
+  const visibleProducts = useMemo(() => productList.filter((product) => {
     const matchesCategory = activeCategory === "Tất cả" || product.category === activeCategory;
     const matchesSearch = product.name.toLowerCase().includes(search.toLowerCase());
     return matchesCategory && matchesSearch;
-  }), [activeCategory, search]);
+  }), [productList, activeCategory, search]);
 
-  const toggleSaved = (id: number) => setSaved((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  const toggleSaved = (id: string | number) => setSaved((current) => current.includes(String(id)) ? current.filter((item) => item !== String(id)) : [...current, String(id)]);
 
   return (
     <main className="min-h-screen overflow-hidden">
@@ -87,8 +108,8 @@ export default function HomePage() {
               <div className="relative overflow-hidden bg-[#F0EEE9]">
                 <img src={product.image} alt={product.name} className="aspect-[4/5] w-full object-cover transition duration-700 group-hover:scale-105"/>
                 <span className="absolute left-3 top-3 bg-[#F7F6F2]/90 px-3 py-2 text-[8px] font-bold tracking-[0.14em] backdrop-blur sm:left-4 sm:top-4 sm:text-[9px]">{product.tag.toUpperCase()}</span>
-                <button onClick={() => toggleSaved(product.id)} aria-label="Lưu sản phẩm" className={`absolute right-3 top-3 rounded-full p-2.5 backdrop-blur transition sm:right-4 sm:top-4 ${saved.includes(product.id) ? "bg-ink text-white" : "bg-white/90 text-ink hover:bg-ink hover:text-white"}`}><Heart size={15} fill={saved.includes(product.id) ? "currentColor" : "none"}/></button>
-                <div className="absolute inset-x-0 bottom-0 translate-y-full bg-ink/90 p-3 text-center text-[9px] font-bold tracking-[0.15em] text-white transition duration-300 group-hover:translate-y-0">KHÁM PHÁ SẢN PHẨM <ArrowUpRight className="ml-1 inline" size={12}/></div>
+                <button onClick={() => toggleSaved(product.id)} aria-label="Lưu sản phẩm" className={`absolute right-3 top-3 rounded-full p-2.5 backdrop-blur transition sm:right-4 sm:top-4 ${saved.includes(String(product.id)) ? "bg-ink text-white" : "bg-white/90 text-ink hover:bg-ink hover:text-white"}`}><Heart size={15} fill={saved.includes(String(product.id)) ? "currentColor" : "none"}/></button>
+                {product.affiliateUrl && <a href={product.affiliateUrl} target="_blank" rel="noopener noreferrer" className="absolute inset-x-0 bottom-0 translate-y-full bg-ink/90 p-3 text-center text-[9px] font-bold tracking-[0.15em] text-white transition duration-300 group-hover:translate-y-0">XEM SẢN PHẨM <ArrowUpRight className="ml-1 inline" size={12}/></a>}
               </div>
               <div className="pt-4"><p className="text-[9px] font-semibold tracking-[0.16em] text-[#9B8060]">{product.category.toUpperCase()}</p><h3 className="mt-2 text-sm font-semibold sm:text-base">{product.name}</h3><p className="mt-1 text-xs text-[#77736D]">{product.tone}</p><p className="mt-3 text-sm font-bold">{product.price}</p></div>
             </article>)}
